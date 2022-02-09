@@ -1,0 +1,37 @@
+-- Adding Datcov to PMI from PMI history (20210617)
+INSERT INTO [Patient].[dbo].[pmi] 
+([pmi_id]
+      ,[pmi_history_row_id]
+      ,[folder_number]
+      ,[internal_patient_number]
+      ,[datasource_id]
+      ,[sa_id]
+      ,[surname]
+      ,[firstnames]
+      ,[date_of_birth]
+      ,[date_of_death]
+      ,[sex]
+      ,[date_added_to_table]
+      ,[date_created_at_source]
+      ,[FacCreated]
+      ,[is_active]
+      ,[modified_date])
+select b.pmi_id
+      ,a.[pmi_history_row_id]
+      ,a.[folder_number]
+      ,a.[internal_patient_number]
+      ,a.[datasource_id]
+      ,a.[sa_id]
+      ,a.[surname]
+      ,a.[firstnames]
+      ,a.[date_of_birth]
+      ,a.[date_of_death]
+      ,a.[sex]
+      ,a.[date_added_to_table]
+      ,a.[date_created_at_source]
+      ,a.[FacCreated]
+      ,a.[is_active]
+      ,a.[modified_date]
+from patient.dbo.pmi_history a
+join patient.map.identifiers b on a.folder_number = b.other_source_id
+where a.datasource_id = 37
