@@ -1,0 +1,20 @@
+INSERT INTO [Patient].[map].[pmi]
+           ([pmi_id]
+           ,[best_link_for_pmi_id]
+           ,[map_type_id]
+           ,[map_criteria_id]
+          -- ,[pmi_dominant_id]
+           ,[date_added_to_table]
+           --,[link_id]
+           --,[is_blacklisted]
+           ,[modified_date])
+ 
+ Select      pm.pmi_id
+		   , ph.[pmi_id_map]  
+		   , 3 as [map_type_id]
+		   , [criteria_id_pmi]
+		   , getdate() as [date_added_to_table]
+		   , getdate() as [modified_date]
+FROM [Patient].[dbo].[pmi_history] ph
+JOIN [Patient].[dbo].[pmi] pm on ph.folder_number = pm.folder_number
+where pmi_id_map is not null
