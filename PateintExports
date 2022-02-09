@@ -1,0 +1,29 @@
+#import libraries (modules)
+import requests
+import json
+import csv
+import datetime
+import os
+import re
+import pandas as pd
+global datetime_stamp
+import time
+
+
+#Setting connections
+#params = {'format': 'json', 'top': 100 , 'inlinecount':'allpages'} # You could use https://www.somesite.com/api/query?id=blahblah&output=json directly.
+#params = https://nicd.comunity.me/api/NICD/PatientHistoryExport?$format=json&$top=100&$inlinecount=allpages
+
+datetime_stamp = datetime.datetime.now()
+proxies = { "http": "proxy.kznhealth.gov.za:3128","https": "proxy.kznhealth.gov.za:3128"}
+API = 'https://nicd.comunity.me/api/NICD/PatientExport?$format=json&$inlinecount=allpages'
+APIcred = 'nqobile.muleya@kznhealth.gov.za','JnrTyler$a$ha2021'
+
+res = requests.get(API, auth = APIcred, proxies=proxies)#.text#params = params, 
+
+
+json_content = res.json()['value']
+
+df = pd.DataFrame(json_content)
+
+df.to_excel(r'H:\ETL\Python\NICD Case and Tests ETL\PatientExport.xlsx', sheet_name='DATCOV_imports')
