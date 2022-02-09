@@ -1,0 +1,123 @@
+--Insert PMI data from Datcov to PMI History
+--Loading PMI data from Datcov to PMI history
+Drop Table If Exists [Staging].[dbo].[datcov_pmi]
+CREATE TABLE [Staging].[dbo].[datcov_pmi](
+	[datasource_id] [int] NOT NULL,
+	[folder_number] [float] NULL,
+	[firstnames] [nvarchar](255) NULL,
+	[surname] [nvarchar](255) NULL,
+	[sa_id] [nvarchar](255) NULL,
+	[date_of_birth] [date] NULL,
+	[date_of_death] [datetime] NULL,
+	[sex] [nvarchar](1) NULL,
+	[date_created_at_source] [datetime] NULL,
+	[date_added_to_table] [datetime] NOT NULL,
+	[faccreated] [nvarchar](255) NULL,
+	[other_identifier] [nvarchar](255) NULL,
+	[pmi_id_map] [int] NULL,
+	[pmi_id_possible_map] [int] NULL,
+	[criteria_id_pmi] [int] NULL,
+) ON [PRIMARY]
+GO
+INSERT INTO [Staging].[dbo].[datcov_pmi]  --(46232 rows affected)
+      ([datasource_id]
+	  ,[folder_number]
+	  ,[firstnames]
+	  ,[surname]
+	  ,[sa_id]
+      ,[date_of_birth]
+      ,[date_of_death]
+	  ,[sex]
+	  ,[date_created_at_source]
+	  ,[date_added_to_table]
+      ,[FacCreated]
+	  ,[other_identifier]
+	  ,[pmi_id_map]
+	  ,[pmi_id_possible_map]
+	  ,[criteria_id_pmi]
+	  )
+SELECT
+       37 as datasource_id
+      ,dc.[PatientId] as folder_number
+      ,dc.[Name] AS firstnames
+      ,dc.[Surname] AS surname
+      ,dc.[IDNumber] AS sa_id
+      ,cast(dc.[BirthDate] as date) as date_of_birth
+	  ,case when dc.[DischargeStatus] = 'Died' Then [OutcomeDate] else Null End date_of_death
+      ,substring(dc.[Sex],1,1) AS sex	 
+      ,dc.[AdmissionDate] as date_created_at_source
+	  ,getdate() as date_added_to_table
+      ,dc.[Facility] as faccreated
+	  ,dc.[NICDCaseID] as [other_identifier]
+	  ,cast(null as int) as [pmi_id_map]
+	  ,cast(null as int) as [pmi_id_possible_map]
+	  ,cast(null as int) as [criteria_id_pmi]
+--INTO staging.dbo.datcov_pmi
+FROM [Archive].[dbo].[DATCOV_PatientHistory_2022-01-30] dc 
+--DATCOV_import_24082021 =>  select  'DATCOV_import_'+convert(varchar(8),getdate(),112)
+LEFT JOIN [Patient].[dbo].[pmi_history] ph on '%' + CAST(dc.PatientId as varchar(20)) + '%' LIKE ph.folder_number 
+where ph.folder_number is null
+
+--Run linkage
+declare @whereclause varchar(max)= ' and firstnames not like ''baby%'' ' +' and firstnames not like ''baba%'' '
+          + ' and firstnames not like ''%twin%'' ' + ' and firstnames not like ''b/v%'' ' + ' and datasource_id = 37 '
+exec staging.dbo.sp_pmi_dynamic_map
+@TableName= '[Staging].[dbo].[datcov_pmi]'
+,@DatasourceIDCol='datasource_id'
+,@PmiIDMappedCol='pmi_id_map'
+,@PmiIDPossibleMappedCol='pmi_id_possible_map'
+,@PmiHistoryRowIdCol=null
+,@FolderNumberCol='folder_number'
+,@FirstNameCol='firstnames'
+,@SurnameCol='surname'
+,@FullNameCol=null
+,@DateOfBirthCol='date_of_birth'
+,@SexCol='sex'
+,@SouthAfricanIDCol='sa_id'
+,@CriteriaIDCol='criteria_id_pmi'
+,@AddressLine1Col=null
+,@AddressLine2Col=null
+,@PostalCodeCol=null
+,@ContactNumberCol=null
+,@GUIDCol=null
+,@OtherFolderNumberCol=null
+,@fn_sn_dob_fol=null
+,@StagingID= '421247C9-BBA4-4005-91E3-22DFE4486F26'
+,@EnableLogging=0
+,@DontAddToLinksHistory=1
+--,@UseRowIdCol= null
+--'pmi_history_row_id'
+,@whereclause = @whereclause
+INSERT INTO [Patient].[dbo].[pmi_history] --(46232 rows affected)
+      ([datasource_id]
+	  ,[folder_number]
+	  ,[firstnames]
+	  ,[surname]
+	  ,[sa_id]
+      ,[date_of_birth]
+      ,[date_of_death]
+	  ,[sex]
+	  ,[date_created_at_source]
+	  ,[date_added_to_table]
+      ,[FacCreated]
+	  ,[other_identifier]
+	  ,[pmi_id_map]
+	  ,[pmi_id_possible_map]
+	  ,[criteria_id_pmi])
+SELECT
+     [datasource_id]
+	  ,[folder_number]
+	  ,[firstnames]
+	  ,[surname]
+	  ,[sa_id]
+      ,[date_of_birth]
+      ,[date_of_death]
+	  ,[sex]
+	  ,[date_created_at_source]
+	  ,[date_added_to_table]
+      ,[FacCreated]
+	  ,[other_identifier]
+	  ,[pmi_id_map]
+	  ,[pmi_id_possible_map]
+	  ,[criteria_id_pmi]
+FROM [Staging].[dbo].[datcov_pmi]
