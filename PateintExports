@@ -21,7 +21,6 @@ APIcred = 'nqobile.muleya@kznhealth.gov.za','JnrTyler$a$ha2021'
 
 res = requests.get(API, auth = APIcred, proxies=proxies)#.text#params = params, 
 
-
 json_content = res.json()['value']
 
 df = pd.DataFrame(json_content)
