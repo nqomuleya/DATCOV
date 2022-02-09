@@ -1,0 +1,17 @@
+ALTER TABLE Patient.map.identifiers 
+Add other_source_id varchar(20)
+
+select *
+FROM Patient.map.identifiers
+where datasource_id = 37
+
+INSERT INTO Patient.map.identifiers 
+      ([other_source_id]
+      ,[date_added_to_table]
+	  ,[datasource_id])
+SELECT Folder_number AS other_source_id,
+       GETDATE() AS date_added_to_table,
+	   37 AS datasource_id
+	   select *
+FROM Patient.dbo.pmi_history
+WHERE datasource_id = 37
