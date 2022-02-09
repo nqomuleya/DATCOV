@@ -1,0 +1,241 @@
+##*****************Change History*********************************************************************
+## Date (yyyy-mm-dd)	       Author					    Comments
+##------------------	--------------------		--------------------------------------------
+## 2020-11-18		PHDC_Paladin			                    Created
+## 2020-12-03           PHDC_Paladin                                        Revised
+## 2020-12-17           PHDC_Paladin                                        Revised
+##****************************************************************************************************
+## Edited by Nqobile for kznhealth PHDC
+##-- =================================================================================================
+
+import requests
+import json
+import csv
+import datetime
+import os
+import re
+import pandas as pd
+global datetime_stamp
+import time
+
+logging_fname = "NICD_Log.txt"
+#os.environ["HTTP_PROXY"]= 'proxy.kznhealth.gov.za'
+
+if os.path.exists(logging_fname):
+    mode_select = 'a'
+else:
+    mode_select = 'w'
+logging_progress = open(logging_fname, mode=mode_select)
+datetime_stamp = datetime.datetime.now()
+logging_progress.write("----------\n")
+logging_progress.write(str(datetime_stamp.strftime("%d-%m-%Y"))+'\n')
+print(str(datetime_stamp.strftime("%d-%m-%Y")))
+begin_time = datetime.datetime.now()
+chunks_enabled = 0 # 1 yes, 0 no
+chunks = 1
+re_download_enable = 0
+txt_case_list_last_record = "Case List Last Record.txt"
+txt_case_list_updated_last_record = "Case List Updated Last Record.txt"
+txt_test_list_last_record = "Test List Last Record.txt"
+Zip_name = 'PHDC_NICD_' + str(datetime_stamp.strftime("%d-%m-%Y")) + '.zip'
+timeout_value = 100
+tries = 1000
+#-------------------------------------------------------------------------------------------#
+# Logging in and retrieving a token                                                         #
+
+logging_progress.write("Logging in\n")
+print("Logging in")
+proxies = { "http": "proxy.kznhealth.gov.za:3128",
+            "https": "proxy.kznhealth.gov.za:3128"}
+credential = {'username' : 'api.kzndoh', 'password' : '8DA19E54-5F61-4039-AA1F-20F04D94972C'}
+header = {'Accept' : 'application/json','apiKey' : '4D5F607F-3795-4545-8135-57455B3753DB'}
+login = requests.post("https://api.nicd.ac.za/NMC/ResultData/Login", headers=header, params = credential, proxies=proxies)
+token  = login.json()["token"]
+#-------------------------------------------------------------------------------------------#
+# Getting data                                                                              #
+
+def Get_Method(token, header, last_record_start, chunks_enabled, chunks, txt_case_list_last_record, timeout_value, 
+               URL, title, CSV_name, tmp_proxies = { "http": "proxy.kznhealth.gov.za:3128", "https": "proxy.kznhealth.gov.za:3128"}):
+    try:
+        logging_progress.write("Start - " + title + '\n')
+        print("Start - " + title)
+        case_list_params = {'username':'api.kzndoh', 'token':token, 'lastRecord':str(last_record_start)}
+        get_case_list = requests.get(URL, headers = header, params = case_list_params, timeout = timeout_value, proxies=tmp_proxies)
+        print(get_case_list)
+        time.sleep(1)
+        dict_to_json = json.dumps(get_case_list.json())
+        python_obj = json.loads(dict_to_json)
+        case_list = []
+        for activity in python_obj["Data"]:
+            case_list.append(activity)
+        if os.path.exists(txt_case_list_last_record):
+            append_write = 'a'
+        else:
+            append_write = 'w'
+        txt_file = open(txt_case_list_last_record, append_write)
+        txt_file.write("Record: " + str(python_obj["lastRecord"]) + '\t' + str(datetime_stamp.strftime("%c")) + '\n')
+        txt_file.close()
+        logging_progress.write("Writing cases to file\n")
+        print("Writing cases to file")
+        fail_trigger = case_list[0].keys()
+        df = pd.DataFrame(case_list)
+        df.applymap(str)
+        if not os.path.isfile(CSV_name):
+            df.to_csv(CSV_name, header='column_names', index=False, sep=",")
+        else:
+            df.to_csv(CSV_name, mode='a', header=False, index=False, sep=",")
+                   
+        logging_progress.write("Initial chunk loaded\n")
+        print("Initial chunk loaded")
+        logging_progress.write(str(python_obj["lastRecord"])+'\n')
+        print(str(python_obj["lastRecord"]))
+        count_chunks = 1
+        
+        while python_obj["hasMore"]==1:
+            case_list = []
+            if chunks_enabled == 1 and count_chunks == chunks:
+                break
+            logging_progress.write("Loading 1 more chunk\n")
+            print("Loading 1 more chunk")
+            case_list_params = {'username':'api.kzndoh', 'token':token, 'lastRecord': str(int(python_obj["lastRecord"])+1)}
+            get_case_list = requests.get(URL, headers = header, params = case_list_params, timeout = timeout_value, proxies=tmp_proxies)
+            time.sleep(1)
+            dict_to_json = json.dumps(get_case_list.json())
+            python_obj = json.loads(dict_to_json)
+            logging_progress.write(str(python_obj["lastRecord"])+'\n')
+            print(str(python_obj["lastRecord"]))
+            for activity in python_obj["Data"]:
+                case_list.append(activity)
+            count_chunks += 1
+            if os.path.exists(txt_case_list_last_record):
+                append_write = 'a'
+            else:
+                append_write = 'w'
+            txt_file = open(txt_case_list_last_record, append_write)
+            txt_file.write("Record: " + str(python_obj["lastRecord"]) + '\t' + str(datetime_stamp.strftime("%c")) + '\n')
+            txt_file.close()
+            logging_progress.write("Writing cases to file\n")
+            print("Writing cases to file")
+            fail_trigger = case_list[0].keys()
+            df = pd.DataFrame(case_list)
+            df.applymap(str)
+            if not os.path.isfile(CSV_name):
+                df.to_csv(CSV_name, header='column_names', index=False, sep=",")
+            else:
+                df.to_csv(CSV_name, mode='a', header=False, index=False, sep=",")
+                
+        logging_progress.write("Finish - " + title+'\n')
+        print("Finish - " + title)
+        succeed = 1
+    except:
+        logging_progress.write(title + " Method Failed"+'\n')
+        print(title + " Method Failed")
+        succeed = 0
+    return succeed
+#-------------------------------------------------------------------------------------------#
+# Getting Last Record                                                                       #
+
+def Get_Last_Record(filename, title):
+    try:
+        with open(filename, 'r') as record_file:
+            lines = record_file.read().splitlines()
+            list_of_last_records = []
+            for line in lines:
+                try:
+                    entry = str(re.split(r'\t', line)[0].split(": ")[1])
+                    list_of_last_records.append(int(entry))
+                except:
+                    pass
+            last_record_value = str(max(list_of_last_records))
+    except:
+        last_record_value = str(0)
+    logging_progress.write("----------\n")
+    print("----------")
+    logging_progress.write("Last record " + title + ": " + last_record_value + '\n')
+    print("Last record " + title + ": " + last_record_value)
+    return last_record_value
+#-------------------------------------------------------------------------------------------#
+# Running Methods                                                                           #
+
+proxies = { "http": "proxy.kznhealth.gov.za:3128",
+            "https": "proxy.kznhealth.gov.za:3128"}
+
+
+
+CSV_name = 'GetCaseList_' + str(datetime_stamp.strftime("%d-%m-%Y")) + '.csv'
+succeed = 0 # Re-run if failed
+check = 0 # Counter for tries
+while succeed == 0 and check <= tries:
+    last_record = Get_Last_Record(txt_case_list_last_record, "Get Case List")
+    print('Rec: '+str(last_record))
+    succeed = Get_Method(token, header, last_record, chunks_enabled, chunks, txt_case_list_last_record, timeout_value, "https://api.nicd.ac.za/NMC/ResultData/GetCaseList", "Get Case List", CSV_name, proxies)
+    check += 1
+'''
+last_record = Get_Last_Record(txt_case_list_updated_last_record, "Get Updated Case List")
+CSV_name = 'GetUpdatedCaseList_' + str(datetime_stamp.strftime("%d-%m-%Y")) + '.csv'
+Get_Method(token, header, last_record, chunks_enabled, chunks, txt_case_list_updated_last_record, timeout_value, "https://api.nicd.ac.za/NMC/ResultData/GetUpdatedCaseList", "Get Updated Case List", CSV_name)
+'''
+CSV_name = 'GetTestList_' + str(datetime_stamp.strftime("%d-%m-%Y")) + '.csv'
+succeed = 0 # Re-run if failed
+check = 0 # Counter for tries 
+while succeed == 0 and check <= tries:
+    last_record = Get_Last_Record(txt_test_list_last_record, "Get Test List")
+    print('Rec: '+str(last_record))
+    succeed = Get_Method(token, header, last_record, chunks_enabled, chunks, txt_test_list_last_record, timeout_value, "https://api.nicd.ac.za/NMC/ResultData/GetTestList", "Get Test List", CSV_name, proxies)
+    check += 1
+
+logging_progress.write("----------\n")
+print("----------")
+logging_progress.write("Logging out\n")
+print("Logging out")
+logout = {'username':'api.kzndoh', 'token':token}
+post_logout = requests.get("https://api.nicd.ac.za/NMC/ResultData/Logout", headers=header, params = logout, proxies=proxies)
+
+#-------------------------------------------------------------------------------------------#
+# CSV to txt                                                                                #
+
+today_date = str(datetime_stamp.strftime("%d-%m-%Y"))
+file_list = ['GetCaseList_'+today_date+'.csv', 'GetTestList_'+today_date+'.csv']
+appending_list = ['GetCaseList\\GetCaseList_'+today_date+'.txt','GetTestList\\GetTestList_'+today_date+'.txt']
+folder_list = ['GetCaseList', 'GetTestList']
+for folder in folder_list:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+indexing=0
+for files in file_list:
+    dataf = pd.read_csv(files, sep=",", header=None, skiprows=1)
+    dataf = dataf.fillna('')
+    for index,row in dataf.iterrows():
+        if len(row)>1:
+            lengths = []
+            if indexing == 0:
+                fname=appending_list[0]
+            elif indexing == 1:
+                fname=appending_list[1]
+            with open(fname, 'a', newline='', encoding='utf-8') as new_txt:
+                txt_writer = csv.writer(new_txt, delimiter = '\t')
+                lengths.append(len(row))
+                txt_writer.writerow(row)
+    logging_progress.write(folder_list[indexing] + " max: " + str(max(lengths))+'\n')
+    logging_progress.write(folder_list[indexing] + " min: " + str(min(lengths))+'\n') 
+    print(folder_list[indexing] + " max: " + str(max(lengths)))
+    print(folder_list[indexing] + " min: " + str(min(lengths)))
+    indexing += 1
+
+if re_download_enable==1:
+    try:
+        os.remove(txt_case_list_last_record)
+    except:
+        pass
+    try:
+        os.remove(txt_test_list_last_record)
+    except:
+        pass
+
+#-------------------------------------------------------------------------------------------#
+# Execution Monitoring                                                                      #
+
+execution_time = (datetime.datetime.now() - begin_time)
+logging_progress.write("Execution time: " + str(execution_time)+'\n') 
+print("Execution time: " + str(execution_time))
+logging_progress.close()
