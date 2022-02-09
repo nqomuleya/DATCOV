@@ -1,0 +1,25 @@
+## Create scripts to take the data from the Datacov files in Archive to pmi_history in patient: 
+
+INSERT INTO [Patient].[dbo].[pmi_history] 
+      ([datasource_id]
+	  ,[folder_number]
+	  ,[firstnames]
+	  ,[surname]
+	  ,[sa_id]
+      ,[date_of_birth]
+      ,[date_of_death]
+      ,[sex]
+      ,[FacCreated]
+	  ,[other_identifier])
+SELECT 37 AS datasource_id
+	  ,[D] AS folder_number
+	  ,[Name] AS firstnames
+      ,[Surname] AS surname
+      ,[IdNumber] AS sa_id
+	  ,REPLACE(TRY_CONVERT(VARCHAR(10),[BirthDate],111),'/','-') AS date_of_birth
+	  ,REPLACE(TRY_CONVERT(VARCHAR(10),[Date of Death],111),'/','-') AS date_of_death
+	  ,substring([BirthSex],1,1) AS sex
+	  ,[Facility] AS FacCreated
+	  ,[NICDCaseID] AS other_identifier
+FROM [DATCOV].[dbo].[tblDatcov]
+WHERE LEN(IdNumber) < 17
