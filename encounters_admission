@@ -1,0 +1,41 @@
+Insert into [Staging].[temp].[encounters_admissions](
+			[pmi_id]
+			,[pmi_possible_id]
+			,[fac_id]
+			,[encounter_visit_type_id]
+			,[encounter_type_id]
+			,[fac_source_name]
+			,[encounter_start_date]
+			,[encounter_end_date] 
+			,[datasource_id]
+			, datasource_ids
+			,[ward_code1]
+			,[ward_code2])
+
+SELECT   	p.pmi_id
+p.pmi_id as pmi_possible_id
+		,f.fac_id
+		,1 as encounter_visit_type_id	--Hospital Admission
+		,1 as [encounter_type_id]--check in [Clinical].[lu].[encounter_type] for the appropriate encounter type ID: admissions = 1
+		,d.facility as fac_source_name
+		,cast(d.[Adm Date#AdmissionDate] as date) encounter_start_date --Admission Date
+		--,d. encounter_start_time --Admission Time
+		,cast(d.[OutcomeDate] as date) as encounter_end_date -- Discharge Date
+		--,d. encounter_end_time -- Discharge Time
+		--, transaction_date --Ignore or take Admission Date
+		, 37 AS datasource_id --Ok
+		, case when [Ward upon admission] = 'General Ward' Then 'GW'
+			when [Ward upon admission] = 'High Care' Then 'HC'
+			when [Ward upon admission] = 'Intensive Care Unit' Then 'ICU'
+			when [Ward upon admission] = 'Isolation Ward' Then 'IU'
+		ELSE Null END as ward_code1 --Admission Ward
+		, 
+		case when [Highest Level of Care table#Highest Level of Care] = 'General Ward' Then 'GW'
+			when [Highest Level of Care table#Highest Level of Care]  = 'High Care' Then 'HC'
+			when [Highest Level of Care table#Highest Level of Care]  = 'Intensive Care Unit' Then 'ICU'
+		ELSE Null END as  ward_code2 --Admission Ward
+FROM [DATCOV].[dbo].[tblDatcov] d
+LEFT JOIN patient.map.identifiers p on d.D = p.other_source_id
+LEFT JOIN [Facility].[lu].[fac] f on d.Facility collate SQL_Latin1_General_CP1_CI_AS = f.fac_name
+where 	f.fac_id is not null
+	and p.pmi_id is not null
