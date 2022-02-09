@@ -1,0 +1,23 @@
+INSERT INTO [Patient].[dbo].[pmi_contacts]
+           ([pmi_id]
+           ,[folder_number]
+           ,[datasource_id]
+           ,[contact_type]
+           ,[contact_value]
+           ,[date_added_to_table]
+           ,[date_created_at_source]
+           ,[FacCreated]
+           ,[is_active])
+SELECT    [pmi_id]
+	   , [D] as folder_number --folder number in pmi history
+	   , 37 as [datasource_id]
+	   , 'Home Phone' as [contact_type]
+       , [Mobile] as [contact_value]
+	   , getdate() as [date_added_to_table]
+	   , [Adm Date#CovidDiagnosisDate] as [date_created_at_source] --Take diagnosis data as date created at source
+	   , [Facility] as [FacCreated]
+	   , 1 as [is_active]
+FROM [DATCOV].[dbo].[tblDatcov] td
+JOIN patient.map.identifiers mid on td.D = mid.other_source_id
+  where mobile not in ( '   0',' 00','0','00','000','0000','0288','08','1','103','34','36','4','5','6','7','8','9'
+								,'90','N/A','N\A','na','Nil','no','none','o','oo')
