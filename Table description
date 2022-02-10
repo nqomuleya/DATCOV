@@ -1,0 +1,11 @@
+SELECT
+tables.name AS TableName,
+columns.name AS ColumnName,
+columns.max_length AS ColumnLength,
+types.name AS TypeName
+FROM  [DATCOV].[sys].[tables]
+INNER JOIN DATCOV.sys.columns
+ON tables.object_id = columns.object_id
+INNER JOIN DATCOV.sys.types
+ON types.user_type_id = columns.user_type_id
+WHERE tables.name LIKE 'tblDatcov';
