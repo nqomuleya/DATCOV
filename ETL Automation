@@ -1,0 +1,8 @@
+ETL Automation
+/***********************************************************************************************
+a. PMI records from Datcov to PMI
+*****i. Datcov to Staging --datcov_pmi
+*****ii. Staging to PMI history (Including Patient Matching Step)
+*****iii. PMI history to PMI (Including loading into map.pmi)
+b. Admission records from Datcov to Encounters
+c. Mortality records from Datcov to Patient mortality history then Roll UP to Mortality
